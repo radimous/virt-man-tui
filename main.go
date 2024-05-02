@@ -51,13 +51,13 @@ func attachDisk(dom *libvirt.Domain, diskXML string) error {
 func createTable() *tview.Table {
 	table := tview.NewTable().
 		SetBorders(false).
-		SetSeparator('\u2502').
+		SetSeparator(tview.Borders.Vertical).
 		SetSelectable(true, false).
 		SetFixed(1, 1)
 	setCellSpaces(table, 0, 0, "Name")
 	setCellSpaces(table, 0, 1, "State")
 	setCellSpaces(table, 0, 2, "CPU Usage")
-	setCellSpaces(table, 0, 3, "Memory")
+	setCellSpaces(table, 0, 3, "Memory Usage")
 	setCellSpaces(table, 0, 4, "I/O")
 	setCellSpaces(table, 0, 5, "Network Usage")
 	table.Select(1, 0)
@@ -74,7 +74,7 @@ func createTable() *tview.Table {
 
 func runTableRefresher(app *tview.Application, table *tview.Table, conn *libvirt.Connect) {
 
-	prevSt := make(map[string]prevStats)
+	statProviders := make(map[string]StatProvider)
 	ticker := time.NewTicker(1 * time.Second)
 
 	for {
@@ -84,13 +84,12 @@ func runTableRefresher(app *tview.Application, table *tview.Table, conn *libvirt
 			continue
 		}
 		//TODO: remove this
-		for i := 1; i < 10; i++ {
-			domainList = append(domainList, domainList[0])
-		}
+		//for i := 1; i < 100; i++ {
+		//	domainList = append(domainList, domainList[0])
+		//}
 		select {
 		case <-ticker.C:
 			for i, domain := range domainList {
-
 				name, err := domain.GetName()
 				if err != nil {
 					log.Println("Failed to get domain name:", err)
@@ -109,35 +108,32 @@ func runTableRefresher(app *tview.Application, table *tview.Table, conn *libvirt
 					continue
 				}
 
-				info, err := domain.GetInfo()
-				if err != nil {
-					log.Println("Failed to get domain info:", err)
+				domStatProvider, ok := statProviders[name]
+				if !ok {
+					domStatProvider = *NewStatProvider(&domain)
+					statProviders[name] = domStatProvider
 				}
-				numCores := info.NrVirtCpu
 
-				domStats := prevSt[name]
-
-				CPU, err := getCPUUsage(&domain, &domStats, numCores, 1)
+				CPU, err := domStatProvider.getCPUUsage(1)
 				if err != nil {
 					log.Println("Failed to get CPU usage:", err)
 
 				}
 				setCellSpaces(table, i+1, 2, CPU)
 				//println(CPU)
-				netStats, err := getNetworkStats(&domain, &domStats, 1)
+				netStats, err := domStatProvider.getNetworkStats(1)
 				if err != nil {
 					log.Println("Failed to get network stats:", err)
 				}
 				setCellSpaces(table, i+1, 5, netStats)
 
-				diskStats, err := getDiskStats(&domain, &domStats, 1)
+				diskStats, err := domStatProvider.getDiskStats(1)
 				if err != nil {
 					log.Println("Failed to get disk stats:", err)
 				}
 				setCellSpaces(table, i+1, 4, diskStats)
 
-				prevSt[name] = domStats
-				memStats, err := getMemoryStats(&domain)
+				memStats, err := domStatProvider.getMemoryStats()
 				if err != nil {
 					log.Println("Failed to get memory stats:", err)
 				}
