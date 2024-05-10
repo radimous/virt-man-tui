@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -38,7 +37,7 @@ func humanState(state libvirt.DomainState) string {
 		return "Unknown"
 	}
 }
-func attachDisk(dom *libvirt.Domain, diskXML string) error {
+func attachDiskXML(dom *libvirt.Domain, diskXML string) error {
 	// Attach the disk to the domain
 	if err := dom.AttachDeviceFlags(diskXML, libvirt.DOMAIN_DEVICE_MODIFY_LIVE); err != nil {
 		log.Println("Failed to hotplug disk:", err)
@@ -171,38 +170,8 @@ func keybindsGrid() *tview.Grid {
 	return grid
 }
 
-var statusView *tview.TextView = transparentTextView("")
 var grid *tview.Grid
 
-func updateStatusHeight() {
-	_, _, width, _ := statusView.GetInnerRect()
-	text := statusView.GetText(false)
-	text = strings.ReplaceAll(text, "\n", " ")
-	var builder strings.Builder
-	for len(text) > width {
-		spaceIndex := strings.LastIndex(text[:width], " ")
-		if spaceIndex == -1 {
-			spaceIndex = width
-		}
-
-		builder.WriteString(text[:spaceIndex])
-		builder.WriteRune('\n')
-		text = text[spaceIndex+1:]
-	}
-
-	builder.WriteString(text)
-	statusView.SetText(builder.String())
-	statusHeight := strings.Count(statusView.GetText(false), "\n") + 1
-	if statusHeight > 6 {
-		statusHeight = 6
-	}
-	grid.SetRows(0, statusHeight, 2)
-}
-
-func setStatus(status string) {
-	statusView.SetText(status)
-	updateStatusHeight()
-}
 func main() {
 	f, err := os.OpenFile("log.txt", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	defer f.Close()
@@ -210,12 +179,13 @@ func main() {
 	var connectionURI string
 	flag.StringVar(&connectionURI, "c", "qemu:///system", "libvirt connection URI")
 	flag.Parse()
-
-	app := tview.NewApplication()
-
-	table := createTable()
 	statusView.SetBackgroundColor(tcell.ColorLightGray)
 	statusView.SetTextColor(tcell.ColorBlack)
+	var app *tview.Application = tview.NewApplication()
+	pages := tview.NewPages()
+	var actions = initActions(app, pages)
+	table := createTable()
+
 	grid = tview.NewGrid().
 		SetRows(0, 1, 2).
 		SetColumns(0).
@@ -230,11 +200,13 @@ func main() {
 	}
 	defer conn.Close()
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return handleKeypress(conn, table, event)
+		return handleKeypress(conn, table, event, actions)
 	})
 
 	go runTableRefresher(app, table, conn)
-	if err := app.SetRoot(grid, true).SetFocus(table).Run(); err != nil {
+
+	pages.AddAndSwitchToPage("MainTable", grid, true)
+	if err := app.SetRoot(pages, true).SetFocus(table).Run(); err != nil {
 		panic(err)
 	}
 
