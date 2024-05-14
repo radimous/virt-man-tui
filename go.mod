@@ -3,6 +3,7 @@ module radimous/virt-man-tui
 go 1.22.1
 
 require (
+	github.com/beevik/etree v1.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/rivo/tview v0.0.0-20240420134618-e119d15762fe
@@ -10,7 +11,6 @@ require (
 )
 
 require (
-	github.com/beevik/etree v1.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
