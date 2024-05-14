@@ -82,10 +82,7 @@ func runTableRefresher(app *tview.Application, table *tview.Table, conn *libvirt
 			log.Println("Failed to get domain list:", err)
 			continue
 		}
-		//TODO: remove this
-		//for i := 1; i < 100; i++ {
-		//	domainList = append(domainList, domainList[0])
-		//}
+
 		select {
 		case <-ticker.C:
 			for i, domain := range domainList {
@@ -153,6 +150,7 @@ func transparentTextView(text string) *tview.TextView {
 	return view
 }
 
+// TODO: improve keybinds, this would be nightmare on non qwerty layouts
 func keybindsGrid() *tview.Grid {
 	grid := tview.NewGrid().
 		SetRows(1, 1).
@@ -164,8 +162,8 @@ func keybindsGrid() *tview.Grid {
 		AddItem(transparentTextView("^S: Suspend"), 1, 1, 1, 1, 0, 0, false).
 		AddItem(transparentTextView("^E: Reboot"), 0, 2, 1, 1, 0, 0, false).
 		AddItem(transparentTextView("^D: Destroy"), 1, 2, 1, 1, 0, 0, false).
-		AddItem(transparentTextView("^R: Hotplug disk"), 0, 3, 1, 1, 0, 0, false).
-		AddItem(transparentTextView("^F: Unplug disk"), 1, 3, 1, 1, 0, 0, false)
+		AddItem(transparentTextView("^R: Attach disk"), 0, 3, 1, 1, 0, 0, false).
+		AddItem(transparentTextView("^F: Detach disk"), 1, 3, 1, 1, 0, 0, false)
 
 	return grid
 }

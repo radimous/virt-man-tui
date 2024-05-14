@@ -28,7 +28,6 @@ func handleKeypress(conn *libvirt.Connect, table *tview.Table, event *tcell.Even
 		log.Println("Failed to get domain:", err)
 		return event
 	}
-	defer dom.Free()
 
 	if action, ok := actions[event.Key()]; ok {
 		setStatus(action.StartMessage() + " " + vmName)
